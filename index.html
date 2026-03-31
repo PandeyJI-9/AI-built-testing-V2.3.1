@@ -60,7 +60,8 @@
     .upload-preview img { max-width: 180px; max-height:180px; border-radius:12px; }
     .upload-preview audio { width: 180px; }
     .upload-preview { padding: 8px; margin-bottom: 6px;}
-    @media (;}
+    @media (max-width: 768px) {
+      #sidebar {width: 84vw; min-width: 68vw;}
       .sidebar-mask { display: block !important;}
       main {min-width: 0!important;}
     }
@@ -333,8 +334,4 @@
       if(!state.chats.length) createNewChat();
       else {
         renderSidebar();
-        loadChat(state.currentChatId);
-      }
-    }
-    function renameChat(id) {
-      con
+        loadChat(state.curre
