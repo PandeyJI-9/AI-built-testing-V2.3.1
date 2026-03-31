@@ -1,337 +1,480 @@
 <!DOCTYPE html>
-<html lang="en" class="light">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Universal AI Chat Interface</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --background: 0 0% 100%;
-      --foreground: 222.2 84% 4.9%;
-      --border: 214.3 31.8% 91.4%;
-    }
-    .dark {
-      --background: 222.2 84% 4.9%;
-      --foreground: 210 40% 98%;
-      --border: 217.2 32.6% 17.5%;
-    }
-    body {
-      font-family: 'Inter', sans-serif;
-      overscroll-behavior-y: contain;
-    }
-    .app-container {
-      min-height: 100dvh;
-      height: 100dvh;
-      display: flex;
-      overflow: hidden;
-    }
-    #loading {
-      position: fixed;
-      inset: 0;
-      background: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-      transition: opacity 0.3s;
-    }
-    .dark #loading { background: #0f172a; color: white; }
-    .sidebar-transition {
-      transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
-    }
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    .message-appear {
-      animation: fadeIn 0.3s ease-out forwards;
-    }
-    @keyframes fadeIn {
-      from { opacity:0; transform: translateY(10px); }
-      to { opacity:1; transform: translateY(0); }
-    }
-    .markdown-content h1 { font-size:1.5rem; font-weight:bold; margin-bottom:0.5rem; }
-    .markdown-content h2 { font-size:1.25rem; font-weight:bold; margin-bottom:0.5rem; }
-    .markdown-content p { margin-bottom:0.75rem; line-height:1.6; }
-    .markdown-content code { background: #f0f0f0; padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.9em;}
-    .dark .markdown-content code { background: #2d2d2d; }
-    .markdown-content pre { background: #1e1e1e; color: #fff; padding: 1rem; border-radius: 8px; overflow-x: auto; margin-bottom: 1rem; }
-    .upload-preview img { max-width: 180px; max-height:180px; border-radius:12px; }
-    .upload-preview audio { width: 180px; }
-    .upload-preview { padding: 8px; margin-bottom: 6px;}
-    @media (max-width: 768px) {
-      #sidebar {width: 84vw; min-width: 68vw;}
-      .sidebar-mask { display: block !important;}
-      main {min-width: 0!important;}
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal AI Chat Interface</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        * {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100%;
+        }
+
+        .messages-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .input-area {
+            padding: 1rem;
+            border-top: 1px solid currentColor;
+            opacity: 0.1;
+            flex-shrink: 0;
+            background: inherit;
+        }
+
+        .message-bubble {
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .typing-cursor {
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 49% { opacity: 1; }
+            50%, 100% { opacity: 0; }
+        }
+
+        .code-block {
+            background-color: #1e293b;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            overflow-x: auto;
+            margin: 0.5rem 0;
+        }
+
+        .code-block code {
+            color: #e2e8f0;
+            font-family: 'Monaco', 'Courier New', monospace;
+        }
+
+        .dark .code-block {
+            background-color: #0f172a;
+        }
+
+        .sidebar {
+            transition: transform 0.3s ease-out;
+            touch-action: pan-y;
+        }
+
+        .sidebar.hidden {
+            transform: translateX(-100%);
+        }
+
+        .sidebar-overlay {
+            transition: opacity 0.3s ease-out;
+        }
+
+        .message-link {
+            color: #3b82f6;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .dark .message-link {
+            color: #60a5fa;
+        }
+
+        .loading-dot {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+
+        .storage-warning {
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-backdrop {
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            z-index: 9999;
+            font-size: 1.2rem;
+            color: #64748b;
+        }
+
+        .dark #loading {
+            background: #0f172a;
+            color: #94a3b8;
+        }
+
+        .prose {
+            max-width: 100%;
+        }
+
+        .prose p {
+            margin: 0.5rem 0;
+        }
+
+        .prose ul, .prose ol {
+            margin: 0.5rem 0;
+            padding-left: 1.5rem;
+        }
+
+        .prose li {
+            margin: 0.25rem 0;
+        }
+
+        .prose pre {
+            margin: 0.5rem 0;
+        }
+
+        .prose blockquote {
+            border-left: 3px solid #cbd5e1;
+            padding-left: 1rem;
+            margin-left: 0;
+            color: #64748b;
+        }
+
+        .dark .prose blockquote {
+            border-left-color: #475569;
+            color: #94a3b8;
+        }
+
+        .swipe-indicator {
+            position: absolute;
+            width: 30px;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            z-index: 40;
+        }
+
+        input[type="password"]::placeholder,
+        input[type="text"]::placeholder,
+        textarea::placeholder {
+            color: #cbd5e1;
+        }
+
+        .dark input[type="password"]::placeholder,
+        .dark input[type="text"]::placeholder,
+        .dark textarea::placeholder {
+            color: #64748b;
+        }
+    </style>
 </head>
-<body class="bg-gray-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+<body class="bg-white text-gray-900 transition-colors duration-300">
+    <div id="loading">Loading App...</div>
 
-  <div id="loading">
-    <div class="flex flex-col items-center">
-      <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-      <p class="mt-4 font-medium">Loading App...</p>
-    </div>
-  </div>
+    <!-- Main Container -->
+    <div id="app" class="hidden chat-container">
+        <!-- Sidebar -->
+        <div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden sidebar-overlay md:hidden z-30"></div>
+        <div id="sidebar" class="sidebar fixed left-0 top-0 w-64 h-screen bg-gray-100 dark:bg-slate-900 border-r border-gray-200 dark:border-slate-700 flex flex-col z-40 overflow-hidden md:relative md:translate-x-0">
+            <!-- Sidebar Header -->
+            <div class="p-4 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between">
+                <h1 class="text-lg font-bold text-gray-900 dark:text-white">Chat History</h1>
+                <button id="closeSidebarBtn" class="md:hidden p-2 hover:bg-gray-200 dark:hover:bg-slate-800 rounded-lg transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
 
-  <div class="app-container">
-    <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 transform -translate-x-full lg:translate-x-0 sidebar-transition flex flex-col">
-      <div class="p-4 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center">
-        <button onclick="createNewChat()" class="flex-1 flex items-center justify-center gap-2 bg-slate-900 dark:bg-blue-600 text-white py-2 px-4 rounded-xl hover:opacity-90 transition shadow-sm">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-          New Chat
-        </button>
-        <button onclick="toggleSidebar()" class="lg:hidden ml-2 p-2 text-gray-500">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-        </button>
-      </div>
-      <div id="chatHistory" class="flex-1 overflow-y-auto p-3 space-y-2 no-scrollbar"></div>
-      <div class="p-4 border-t border-gray-100 dark:border-slate-800 space-y-2">
-        <button onclick="openSettings()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-          Settings
-        </button>
-        <button onclick="toggleDarkMode()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition">
-          <svg id="themeIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 3v1"/><path d="M12 20v1"/><path d="M3 12h1"/><path d="M20 12h1"/><path d="m18.36 5.64-.7.7"/><path d="m6.34 17.66-.7.7"/><path d="m5.64 5.64.7.7"/><path d="m17.66 17.66.7.7"/></svg>
-          Appearance
-        </button>
-        <button onclick="openAbout()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition">
-          <span class="inline-flex w-4 h-4 items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8h.01"/><path d="M11 12h1v4h1"/></svg></span> About
-        </button>
-      </div>
-    </aside>
-    <div id="sidebarMask" class="sidebar-mask fixed inset-0 bg-black/40 z-40 hidden" onclick="toggleSidebar()"></div>
-    <main class="flex-1 flex flex-col relative min-w-0 bg-white dark:bg-slate-950 lg:ml-0">
-      <header class="h-14 flex items-center justify-between px-4 border-b border-gray-100 dark:border-slate-800 sticky top-0 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md z-10">
-        <div class="flex items-center gap-3">
-          <button onclick="toggleSidebar()" class="lg:hidden p-2 -ml-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition">
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-          </button>
-          <h2 id="currentChatTitle" class="font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[180px] md:max-w-xs">New Chat</h2>
-        </div>
-        <div id="modelBadge" class="text-[10px] uppercase tracking-widest font-bold bg-gray-100 dark:bg-slate-800 px-2 py-1 rounded text-slate-500">DEEPSEEK-R1</div>
-      </header>
-      <div id="messagesContainer" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 no-scrollbar">
-        <div class="max-w-2xl mx-auto mt-20 text-center space-y-4">
-          <div class="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mx-auto">
-            <svg class="text-blue-500" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
-          </div>
-          <h1 class="text-2xl font-bold tracking-tight">How can I help you today?</h1>
-          <p class="text-slate-500 dark:text-slate-400 max-w-sm mx-auto">Start a conversation with DeepSeek or any other model via OpenRouter.</p>
-        </div>
-      </div>
-      <div class="p-4 bg-white dark:bg-slate-950 border-t border-gray-100 dark:border-slate-800 lg:border-t-0">
-        <form id="userInputForm" onsubmit="event.preventDefault(); handleSend();" class="max-w-3xl mx-auto relative group">
-          <div class="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-purple-500 rounded-2xl blur opacity-10 group-focus-within:opacity-25 transition"></div>
-          <div class="relative flex items-end gap-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl p-2 pl-4 shadow-sm">
-            <input type="file" id="fileInput" class="hidden" multiple accept="image/*,audio/*,video/*,.txt,.pdf,.doc,.docx,.xls,.xlsx,.csv,.zip,.md"/>
-            <button type="button" tabindex="-1" onclick="triggerFileInput()" class="p-2 text-gray-500 hover:text-blue-500 rounded-lg transition" title="Attach file or photo">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M16.5 5.5V5A3.5 3.5 0 0 0 13 1.5h-2A3.5 3.5 0 0 0 7.5 5v14A3.5 3.5 0 0 0 11 22.5h2A3.5 3.5 0 0 0 16.5 19v-.5"/></svg>
+            <!-- New Chat Button -->
+            <button id="newChatBtn" class="m-4 py-2 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition font-medium">
+                ＋ New Chat
             </button>
-            <div id="uploadPreview" class="upload-preview flex gap-2 overflow-auto"></div>
-            <textarea id="userInput" rows="1" placeholder="Ask anything..." class="flex-1 bg-transparent border-none focus:ring-0 resize-none py-2 max-h-48 text-slate-700 dark:text-slate-200" oninput="autoResize(this)"></textarea>
-            <button id="sendBtn" type="submit" class="p-2 bg-slate-900 dark:bg-blue-600 text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition hover:scale-105 active:scale-95">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
-            </button>
-          </div>
-        </form>
-        <p class="text-[10px] text-center mt-3 text-slate-400">AI can make mistakes. Verify important info.</p>
-      </div>
-    </main>
-  </div>
 
-  <!-- Modal: Settings -->
-  <div id="settingsModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-    <div class="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-      <div class="p-6 space-y-6">
-        <div class="flex justify-between items-center">
-          <h3 class="text-xl font-bold">Configuration</h3>
-          <button onclick="closeSettings()" class="text-gray-400 hover:text-gray-600">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-          </button>
+            <!-- Chat List -->
+            <div id="chatList" class="flex-1 overflow-y-auto px-2 pb-4">
+                <!-- Chats will be populated here -->
+            </div>
+
+            <!-- Footer -->
+            <div class="p-4 border-t border-gray-200 dark:border-slate-700 space-y-2">
+                <button id="settingsBtn" class="w-full py-2 px-4 bg-gray-200 dark:bg-slate-800 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-slate-700 transition flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    Settings
+                </button>
+                <button id="darkModeBtn" class="w-full py-2 px-4 bg-gray-200 dark:bg-slate-800 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-slate-700 transition flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                    </svg>
+                    Dark Mode
+                </button>
+                <div class="text-xs text-gray-500 dark:text-gray-400 text-center pt-2 pb-2 border-t border-gray-200 dark:border-slate-700">
+                    <p class="font-semibold">Design & Developed By</p>
+                    <p class="font-bold text-blue-500">Ayush Pandey JI</p>
+                </div>
+            </div>
         </div>
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium mb-1.5 opacity-70">OpenRouter API Key</label>
-            <input type="password" id="apiKeyInput" class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg px-4 py-2 focus:ring-2 ring-blue-500 outline-none transition" placeholder="sk-or-v1-...">
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1.5 opacity-70">Model Name</label>
-            <input type="text" id="modelInput" class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg px-4 py-2 focus:ring-2 ring-blue-500 outline-none transition" placeholder="deepseek/deepseek-r1:free">
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1.5 opacity-70">Global System Prompt</label>
-            <textarea id="systemPromptInput" rows="3" class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg px-4 py-2 focus:ring-2 ring-blue-500 outline-none transition resize-none"></textarea>
-          </div>
+
+        <!-- Main Chat Area -->
+        <div class="flex-1 flex flex-col md:flex-1 w-full">
+            <!-- Messages Area -->
+            <div id="messagesArea" class="messages-area">
+                <!-- Welcome message shown initially -->
+                <div id="welcomeMessage" class="flex items-center justify-center h-full">
+                    <div class="text-center">
+                        <div class="text-5xl mb-4">💬</div>
+                        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Welcome to AI Chat</h2>
+                        <p class="text-gray-600 dark:text-gray-400">Start a new conversation or select an existing chat</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="input-area">
+                <form id="chatForm" class="flex gap-2">
+                    <input 
+                        id="chatInput" 
+                        type="text" 
+                        placeholder="Ask anything..." 
+                        class="flex-1 px-4 py-3 border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                        autocomplete="off"
+                    />
+                    <button 
+                        type="submit" 
+                        id="sendBtn"
+                        class="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition font-medium flex items-center justify-center gap-2"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                        </svg>
+                        Send
+                    </button>
+                </form>
+            </div>
         </div>
-        <div class="flex gap-3">
-          <button onclick="closeSettings()" class="flex-1 py-2 rounded-lg border border-gray-200 dark:border-slate-700 font-medium hover:bg-gray-50 dark:hover:bg-slate-800 transition">Cancel</button>
-          <button onclick="saveSettings()" class="flex-1 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition">Save Changes</button>
+
+        <!-- Hamburger Menu (Mobile) -->
+        <button id="hamburgerBtn" class="md:hidden fixed top-4 left-4 p-2 bg-gray-200 dark:bg-slate-800 rounded-lg z-50">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+            </svg>
+        </button>
+
+        <!-- Settings Modal -->
+        <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 modal-backdrop p-4">
+            <div class="bg-white dark:bg-slate-800 rounded-lg shadow-lg max-w-md w-full max-h-96 overflow-y-auto">
+                <div class="p-6 space-y-4">
+                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Settings</h2>
+
+                    <!-- API Key Input -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">OpenRouter API Key</label>
+                        <input 
+                            id="apiKeyInput" 
+                            type="password" 
+                            placeholder="sk-or-v1-..." 
+                            class="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <button type="button" id="toggleApiKeyBtn" class="text-xs text-blue-500 mt-1 hover:underline">Show</button>
+                    </div>
+
+                    <!-- Model Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">AI Model</label>
+                        <select id="modelSelect" class="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="deepseek/deepseek-r1:free">DeepSeek R1 (Free)</option>
+                            <option value="openai/gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                            <option value="openai/gpt-4">GPT-4</option>
+                            <option value="meta-llama/llama-2-70b-chat">Llama 2</option>
+                            <option value="mistralai/mistral-7b-instruct">Mistral 7B</option>
+                            <option value="custom">Custom Model</option>
+                        </select>
+                        <input 
+                            id="customModelInput" 
+                            type="text" 
+                            placeholder="Enter custom model name" 
+                            class="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mt-2 hidden"
+                        />
+                    </div>
+
+                    <!-- System Prompt -->
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">System Prompt (Global)</label>
+                            <button type="button" id="toggleSystemPromptBtn" class="text-xs text-blue-500 hover:underline">Edit</button>
+                        </div>
+                        <div id="systemPromptDisplay" class="text-sm text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-slate-700 p-3 rounded max-h-24 overflow-y-auto">
+                            Default system prompt active
+                        </div>
+                        <textarea 
+                            id="systemPromptInput" 
+                            placeholder="Enter system prompt for all chats..." 
+                            class="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mt-2 hidden resize-none h-24"
+                        ></textarea>
+                    </div>
+
+                    <!-- Buttons -->
+                    <div class="flex gap-2 pt-4">
+                        <button id="clearChatHistoryBtn" class="flex-1 py-2 px-4 bg-red-500 text-white rounded-lg hover:bg-red-600 transition font-medium">
+                            Clear History
+                        </button>
+                        <button id="closeSettingsBtn" class="flex-1 py-2 px-4 bg-gray-300 dark:bg-slate-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-400 dark:hover:bg-slate-600 transition font-medium">
+                            Close
+                        </button>
+                    </div>
+
+                    <!-- Storage Warning -->
+                    <div id="storageWarning" class="hidden bg-yellow-100 dark:bg-yellow-900 border border-yellow-400 dark:border-yellow-600 text-yellow-800 dark:text-yellow-200 px-4 py-2 rounded text-sm storage-warning">
+                        ⚠️ Local storage nearing limit. Consider clearing chat history.
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
     </div>
-  </div>
-  <!-- Modal: About -->
-  <div id="aboutModal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-    <div class="bg-white dark:bg-slate-900 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-      <div class="p-6 space-y-4">
-        <div class="flex justify-between items-center mb-2">
-          <h2 class="text-xl font-bold">About</h2>
-          <button onclick="closeAbout()" class="text-gray-400 hover:text-gray-600">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-          </button>
-        </div>
-        <div class="text-base text-slate-700 dark:text-slate-300 leading-relaxed">
-          <b>Universal AI Chat Interface</b> <br>
-          Google Gemini–style universal AI chat, built for OpenRouter.<br>
-          <ul class="list-disc ml-6 mt-2">
-            <li>Works on phone & desktop, supports dark mode, chat management, file/photo upload, markdown, and converts AI responses to voice.</li>
-            <li>Developed with zero build tools and only vanilla JS + Tailwind CDN.</li>
-          </ul>
-          <div class="mt-4 text-xs text-slate-400">Design and developed By <b>Ayush Pandey JI</b></div>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <!-- ==== MAIN SCRIPT ==== -->
-  <script>
-    // --- Tailwind config for dark mode toggle + Inter font ---
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            border: "hsl(var(--border))",
-            background: "hsl(var(--background))",
-            foreground: "hsl(var(--foreground))",
-          },
-          fontFamily: {
-            sans: ['Inter', 'sans-serif'],
-          }
+    <script>
+        // ==================== CONFIGURATION ====================
+        const CONFIG = {
+            DEFAULT_API_KEY: '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',
+            DEFAULT_MODEL: 'deepseek/deepseek-r1:free',
+            OPENROUTER_API: 'https://openrouter.ai/api/v1/chat/completions',
+            DEFAULT_SYSTEM_PROMPT: 'You are a helpful, intelligent, and friendly AI assistant. Provide clear, concise, and accurate answers. Format your responses with proper markdown when appropriate.',
+            STORAGE_WARNING_THRESHOLD: 9 * 1024 * 1024, // 9MB
+        };
+
+        // ==================== STATE MANAGEMENT ====================
+        let state = {
+            currentChatId: null,
+            chats: {},
+            apiKey: CONFIG.DEFAULT_API_KEY,
+            model: CONFIG.DEFAULT_MODEL,
+            globalSystemPrompt: CONFIG.DEFAULT_SYSTEM_PROMPT,
+            darkMode: false,
+            isStreaming: false,
+        };
+
+        // ==================== INITIALIZATION ====================
+        function initApp() {
+            loadFromStorage();
+            setupEventListeners();
+            renderUI();
+            
+            // Hide loading screen
+            setTimeout(() => {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('app').classList.remove('hidden');
+            }, 300);
         }
-      }
-    };
 
-    // --- State Management ---
-    let state = {
-      chats: [],
-      currentChatId: null,
-      settings: {
-        apiKey: '',
-        model: 'deepseek/deepseek-r1:free',
-        systemPrompt: 'You are a helpful, intelligent AI assistant.',
-        isDarkMode: false
-      }
-    };
-    let uploadBlobs = []; // {type, name, size, dataurl, file}
-
-    // --- Initialization ---
-    window.onload = function() {
-      // Load state from localStorage
-      const savedState = localStorage.getItem('ai_chat_clone_state');
-      if (savedState) {
-        try { Object.assign(state, JSON.parse(savedState)); } catch (e) {}
-      }
-
-      // Apply theme
-      if (state.settings.isDarkMode) document.documentElement.classList.add('dark');
-
-      // Hide loader after DOM & font ready
-      setTimeout(() => {
-        document.getElementById('loading').style.opacity = '0';
-        setTimeout(()=>document.getElementById('loading').style.display='none',300);
-      }, 400);
-
-      // Init chats
-      if (!state.chats.length) createNewChat();
-      else {
-        renderSidebar();
-        loadChat(state.currentChatId || state.chats[0].id);
-      }
-
-      // Enter to send (except Shift)
-      document.getElementById('userInput').addEventListener('keydown', e => {
-        if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
-          if(window.innerWidth>768) {
-              e.preventDefault(); handleSend();
-          }
+        // ==================== STORAGE FUNCTIONS ====================
+        function loadFromStorage() {
+            try {
+                const stored = localStorage.getItem('chatAppState');
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    state = { ...state, ...parsed };
+                }
+                applyDarkMode();
+            } catch (error) {
+                console.warn('Failed to load from storage:', error);
+                state.apiKey = CONFIG.DEFAULT_API_KEY;
+                state.model = CONFIG.DEFAULT_MODEL;
+            }
         }
-      });
 
-      // Sidebar mask for mobile
-      renderSidebarMask();
-    };
+        function saveToStorage() {
+            try {
+                const toStore = {
+                    chats: state.chats,
+                    currentChatId: state.currentChatId,
+                    apiKey: state.apiKey,
+                    model: state.model,
+                    globalSystemPrompt: state.globalSystemPrompt,
+                    darkMode: state.darkMode,
+                };
+                localStorage.setItem('chatAppState', JSON.stringify(toStore));
+                checkStorageWarning();
+            } catch (error) {
+                console.warn('Failed to save to storage:', error);
+            }
+        }
 
-    function renderSidebarMask() {
-      const mask=document.getElementById('sidebarMask');
-      mask && (mask.style.display = 'none');
-    }
+        function checkStorageWarning() {
+            try {
+                const stored = JSON.stringify(localStorage);
+                const size = new Blob([stored]).size;
+                const warning = document.getElementById('storageWarning');
+                if (size > CONFIG.STORAGE_WARNING_THRESHOLD && warning) {
+                    warning.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.warn('Storage check failed:', error);
+            }
+        }
 
-    function saveToLocalStorage() {
-      localStorage.setItem('ai_chat_clone_state', JSON.stringify(state));
-    }
+        // ==================== CHAT MANAGEMENT ====================
+        function createNewChat() {
+            const chatId = 'chat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            state.chats[chatId] = {
+                id: chatId,
+                title: 'New Chat',
+                messages: [],
+                systemPrompt: state.globalSystemPrompt,
+                createdAt: new Date().toISOString(),
+            };
+            state.currentChatId = chatId;
+            saveToStorage();
+            renderUI();
+            renderMessages();
+            document.getElementById('chatInput').focus();
+        }
 
-    // --- Sidebar & Navigation ---
-    function toggleSidebar() {
-      const sidebar = document.getElementById('sidebar');
-      const mask = document.getElementById('sidebarMask');
-      const showing = sidebar.classList.contains('translate-x-0');
-      if (showing) {
-        sidebar.classList.remove('translate-x-0');
-        sidebar.classList.add('-translate-x-full');
-        mask && (mask.classList.add('hidden'));
-      } else {
-        sidebar.classList.add('translate-x-0');
-        sidebar.classList.remove('-translate-x-full');
-        mask && (mask.classList.remove('hidden'));
-        mask && (mask.style.display = 'block');
-      }
-    }
-
-    function createNewChat() {
-      const newChat = {
-        id: Date.now().toString(),
-        title: 'New Conversation',
-        messages: [],
-        systemPrompt: state.settings.systemPrompt
-      };
-      state.chats.unshift(newChat);
-      state.currentChatId = newChat.id;
-      saveToLocalStorage();
-      renderSidebar();
-      loadChat(newChat.id);
-      if(window.innerWidth<1024) toggleSidebar();
-    }
-
-    function renderSidebar() {
-      const container = document.getElementById('chatHistory');
-      container.innerHTML = state.chats.map(chat=>`
-        <div class="group relative flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer transition ${state.currentChatId===chat.id?'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400':'hover:bg-gray-100 dark:hover:bg-slate-800'}">
-          <div class="flex-1 truncate text-sm font-medium" onclick="loadChat('${chat.id}')">${chat.title}</div>
-          <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition">
-            <button onclick="renameChat('${chat.id}')" class="p-1 hover:text-blue-500"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
-            <button onclick="deleteChat('${chat.id}')" class="p-1 hover:text-red-500"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
-          </div>
-        </div>
-      `).join('');
-    }
-
-    function loadChat(id) {
-      state.currentChatId = id;
-      const chat = state.chats.find(c=>c.id===id);
-      document.getElementById('currentChatTitle').innerText = chat.title;
-      document.getElementById('modelBadge').innerText = (state.settings.model.split('/')[1]||state.settings.model).split(':')[0];
-      renderMessages();
-      renderSidebar();
-      saveToLocalStorage();
-    }
-    function deleteChat(id) {
-      state.chats = state.chats.filter(c=>c.id!==id);
-      if(state.currentChatId===id) state.currentChatId=state.chats[0]?.id||null;
-      if(!state.chats.length) createNewChat();
-      else {
-        renderSidebar();
-        loadChat(state.curre
+        function deleteChat(chatId) {
+            if (confirm('Delete this chat?')) {
+                delete state.chats[c
